@@ -7,22 +7,21 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: recursive # Foarte important pentru VoodooSerial/Lilu
 
       - name: Set up Xcode
-        # Folosim versiunea de Xcode instalată implicit pe mașina virtuală macOS
         run: sudo xcode-select -s /Applications/Xcode.app
 
       - name: Build Kext
+        # Am adăugat calea corectă către proiect: BigSurface/BigSurface.xcodeproj
         run: |
-          # Curăță și compilează proiectul în configurația Release
-          # Dezactivăm semnarea codului (Code Signing) pentru a permite compilarea pe GitHub
-          xcodebuild -project BigSurface.xcodeproj -scheme BigSurface -configuration Release-x86_64_arm64 ARCHS="x86_64" CODE_SIGNING_ALLOWED=NO
+          xcodebuild -project BigSurface/BigSurface.xcodeproj -scheme BigSurface -configuration Release ARCHS="x86_64" CODE_SIGNING_ALLOWED=NO
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: BigSurface-Kext-SL4
-          path: build/Release/BigSurface.kext
+          # Verificăm unde Xcode pune fișierul (uzual în folderul proiectului)
+          path: BigSurface/build/Release/BigSurface.kext
