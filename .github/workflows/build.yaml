@@ -11,70 +11,40 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Lilu Headers
+      - name: Prepare Dependencies
         run: |
-          # Descarcă Lilu 1.7.1 RELEASE
+          # Descarcă Lilu 1.7.1
           curl -L -o Lilu.zip https://github.com/acidanthera/Lilu/releases/download/1.7.1/Lilu-1.7.1-RELEASE.zip
-          unzip Lilu.zip -d Lilu_Archive
+          unzip Lilu.zip -d Dependencies/Lilu_Bin
           
-          # Creează structura de directoare pentru Xcode
+          # Organizăm structura pentru a fi recunoscută de Xcode
           mkdir -p Dependencies/Lilu.kext/Contents/Headers
+          cp -R Dependencies/Lilu_Bin/Lilu.kext/Contents/Headers/* Dependencies/Lilu.kext/Contents/Headers/ || true
           
-          # Copiază headerele necesare (dacă există în arhivă sau le extragem din kext)
-          # De regulă, pentru compilare avem nevoie de fișierele .hpp
-          cp -R Lilu_Archive/*.kext/Contents/Headers/* Dependencies/Lilu.kext/Contents/Headers/ || true
+          # Ne asigurăm că VoodooSerial are structura corectă
+          # Presupunem că ai urcat VoodooSerial.kext în folderul Dependencies
+          mkdir -p Dependencies/VoodooSerial.kext/Contents/Headers
+          # Dacă ai pus fișierele hpp direct în folder, le mutăm unde trebuie
+          cp Dependencies/*.hpp Dependencies/VoodooSerial.kext/Contents/Headers/ 2>/dev/null || true
 
       - name: Set up Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
       - name: Build Kext
         run: |
+          # Folosim xcodebuild cu parametri de search injectați direct
           xcodebuild -project BigSurface/BigSurface.xcodeproj \
                      -scheme BigSurface \
                      -configuration Release \
-                     ARCHS="x86_64" \
+                     -arch x86_64 \
                      CODE_SIGNING_ALLOWED=NO \
-                     USER_HEADER_SEARCH_PATHS='$(inherited) "${GITHUB_WORKSPACE}/Dependencies/Lilu.kext/Contents/Headers" "${GITHUB_WORKSPACE}/Dependencies/VoodooSerial.kext/Contents/Headers"'
+                     CONFIGURATION_BUILD_DIR=$GITHUB_WORKSPACE/build \
+                     HEADER_SEARCH_PATHS='$(inherited) "${GITHUB_WORKSPACE}/Dependencies/Lilu.kext/Contents/Headers" "${GITHUB_WORKSPACE}/Dependencies/VoodooSerial.kext/Contents/Headers"' \
+                     USER_HEADER_SEARCH_PATHS='$(inherited) "${GITHUB_WORKSPACE}/Dependencies/Lilu.kext/Contents/Headers" "${GITHUB_WORKSPACE}/Dependencies/VoodooSerial.kext/Contents/Headers"' \
+                     LIBRARY_SEARCH_PATHS='$(inherited) "${GITHUB_WORKSPACE}/Dependencies/Lilu_Bin" "${GITHUB_WORKSPACE}/Dependencies"'
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: BigSurface-Kext-SL4-AMD
-          path: BigSurface/build/Release/BigSurface.kextname: Build BigSurface
-on: [push, pull_request, workflow_dispatch]
-
-jobs:
-  build:
-    name: Build Kext
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install Dependencies
-        run: |
-          # Descărcăm headerele necesare pentru VoodooSerial și Lilu
-          git clone https://github.com/VoodooI2C/VoodooSerial.git VoodooSerial
-          git clone https://github.com/acidanthera/Lilu.git Lilu
-          
-          # Creăm simlink-uri pentru ca proiectul să le găsească unde se așteaptă
-          # Ajustează aceste căi în funcție de unde se află fișierele tale sursă
-          mkdir -p BigSurface/include
-          cp -R VoodooSerial/*.hpp BigSurface/SurfaceSerialHub/ 2>/dev/null || true
-
-      - name: Build Kext
-        run: |
-          xcodebuild -project BigSurface/BigSurface.xcodeproj \
-                     -scheme BigSurface \
-                     -configuration Release \
-                     ARCHS="x86_64" \
-                     CODE_SIGNING_ALLOWED=NO \
-                     ADDITIONAL_HEADER_SEARCH_PATHS="$GITHUB_WORKSPACE/VoodooSerial $GITHUB_WORKSPACE/Lilu"
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: BigSurface-Kext-SL4
-          path: BigSurface/build/Release/BigSurface.kext
+          path: build/BigSurface.kext
