@@ -117,7 +117,7 @@
 			<key>IOClass</key>
 			<string>SurfaceSerialHubDriver</string>
 			<key>IONameMatch</key>
-			<string>MSHW0084</string>
+			<string>MSHW0110</string>
 			<key>IOProbeScore</key>
 			<integer>600</integer>
 			<key>IOProviderClass</key>
