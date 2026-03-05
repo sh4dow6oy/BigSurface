@@ -8,30 +8,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Prepare Dependencies
         run: |
-          # 1. Descarcă Lilu 1.7.1 (pentru headerele de kernel)
+          # 1. Descarcă Lilu 1.7.1 pentru headerele de sistem
           curl -L -o Lilu.zip https://github.com/acidanthera/Lilu/releases/download/1.7.1/Lilu-1.7.1-RELEASE.zip
           unzip Lilu.zip -d Lilu_Archive
           
-          # 2. Creează folderele pe care Xcode le așteaptă (conform erorilor de căi relative)
+          # 2. Creăm structura de foldere exact cum o cere codul (3 nivele de folder)
           mkdir -p Dependencies/VoodooGPIO/VoodooGPIO
           mkdir -p Dependencies/VoodooSMBus
           mkdir -p BigSurface/BigSurface/Headers
           
-          # 3. Muta fișierele din folderul tău 'Dependencies' în structura cerută de cod
-          # Rezolvăm eroarea VoodooGPIO.hpp
-          cp Dependencies/VoodooGPIO.hpp Dependencies/VoodooGPIO/VoodooGPIO/VoodooGPIO.hpp || true
+          # 3. Copiem VoodooGPIO.hpp în folderul imbricat (VoodooGPIO/VoodooGPIO/)
+          # Codul tău caută: Dependencies/VoodooGPIO/VoodooGPIO/VoodooGPIO.hpp
+          cp Dependencies/VoodooGPIO/VoodooGPIO.hpp Dependencies/VoodooGPIO/VoodooGPIO/VoodooGPIO.hpp || true
           
-          # Rezolvăm eroarea VoodooSMBusDevice.hpp
-          # Copiem toate headerele din folderul VoodooSMBus pe care l-ai urcat
-          cp Dependencies/VoodooSMBus/*.hpp Dependencies/VoodooSMBus/ 2>/dev/null || true
-          
-          # Rezolvăm eroarea Lilu (kern_util.hpp)
+          # 4. Rezolvăm eroarea Lilu (Headers/kern_util.hpp)
           cp Lilu_Archive/Lilu.kext/Contents/Headers/*.hpp BigSurface/BigSurface/Headers/ || true
+          
+          # 5. Rezolvăm VoodooSMBus (dacă ai fișierele în Dependencies/VoodooSMBus)
+          cp Dependencies/VoodooSMBus/*.hpp Dependencies/VoodooSMBus/ 2>/dev/null || true
 
       - name: Set up Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
@@ -45,8 +42,7 @@ jobs:
                      -arch x86_64 \
                      CODE_SIGNING_ALLOWED=NO \
                      CONFIGURATION_BUILD_DIR=$GITHUB_WORKSPACE/build \
-                     HEADER_SEARCH_PATHS='$(inherited) "${GITHUB_WORKSPACE}/Lilu_Archive/Lilu.kext/Contents/Headers" "${GITHUB_WORKSPACE}/Dependencies" "${GITHUB_WORKSPACE}/Dependencies/VoodooSMBus"' \
-                     USER_HEADER_SEARCH_PATHS='$(inherited) "${GITHUB_WORKSPACE}/Lilu_Archive/Lilu.kext/Contents/Headers" "${GITHUB_WORKSPACE}/Dependencies" "${GITHUB_WORKSPACE}/Dependencies/VoodooSMBus"'
+                     HEADER_SEARCH_PATHS='$(inherited) "${GITHUB_WORKSPACE}/Lilu_Archive/Lilu.kext/Contents/Headers" "${GITHUB_WORKSPACE}/Dependencies" "${GITHUB_WORKSPACE}/Dependencies/VoodooGPIO"'
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
