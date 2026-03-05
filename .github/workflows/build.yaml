@@ -8,27 +8,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Prepare Dependencies
+      - name: Prepare Dependencies Structure
         run: |
-          # 1. Descarcă Lilu 1.7.1 pentru headerele de sistem
-          curl -L -o Lilu.zip https://github.com/acidanthera/Lilu/releases/download/1.7.1/Lilu-1.7.1-RELEASE.zip
-          unzip Lilu.zip -d Lilu_Archive
-          
-          # 2. Creăm structura de foldere exact cum o cere codul (3 nivele de folder)
+          # 1. Creăm ierarhia cerută de căile relative din cod (../../../)
+          # Codul caută: Dependencies/VoodooGPIO/VoodooGPIO/VoodooGPIO.hpp
           mkdir -p Dependencies/VoodooGPIO/VoodooGPIO
-          mkdir -p Dependencies/VoodooSMBus
-          mkdir -p BigSurface/BigSurface/Headers
-          
-          # 3. Copiem VoodooGPIO.hpp în folderul imbricat (VoodooGPIO/VoodooGPIO/)
-          # Codul tău caută: Dependencies/VoodooGPIO/VoodooGPIO/VoodooGPIO.hpp
           cp Dependencies/VoodooGPIO/VoodooGPIO.hpp Dependencies/VoodooGPIO/VoodooGPIO/VoodooGPIO.hpp || true
           
-          # 4. Rezolvăm eroarea Lilu (Headers/kern_util.hpp)
-          cp Lilu_Archive/Lilu.kext/Contents/Headers/*.hpp BigSurface/BigSurface/Headers/ || true
-          
-          # 5. Rezolvăm VoodooSMBus (dacă ai fișierele în Dependencies/VoodooSMBus)
-          cp Dependencies/VoodooSMBus/*.hpp Dependencies/VoodooSMBus/ 2>/dev/null || true
+          # 2. Creăm o scurtătură (simlink) pentru Lilu pentru a satisface <Headers/kern_util.hpp>
+          # Codul caută un folder numit 'Headers' în interiorul căii de search
+          # Structura ta este deja Dependencies/Lilu/Headers, deci vom adăuga Dependencies/Lilu în search paths.
 
       - name: Set up Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
@@ -42,7 +34,8 @@ jobs:
                      -arch x86_64 \
                      CODE_SIGNING_ALLOWED=NO \
                      CONFIGURATION_BUILD_DIR=$GITHUB_WORKSPACE/build \
-                     HEADER_SEARCH_PATHS='$(inherited) "${GITHUB_WORKSPACE}/Lilu_Archive/Lilu.kext/Contents/Headers" "${GITHUB_WORKSPACE}/Dependencies" "${GITHUB_WORKSPACE}/Dependencies/VoodooGPIO"'
+                     HEADER_SEARCH_PATHS='$(inherited) "${GITHUB_WORKSPACE}/Dependencies" "${GITHUB_WORKSPACE}/Dependencies/Lilu" "${GITHUB_WORKSPACE}/Dependencies/VoodooGPIO" "${GITHUB_WORKSPACE}/Dependencies/VoodooSMBus"' \
+                     USER_HEADER_SEARCH_PATHS='$(inherited) "${GITHUB_WORKSPACE}/Dependencies" "${GITHUB_WORKSPACE}/Dependencies/Lilu" "${GITHUB_WORKSPACE}/Dependencies/VoodooGPIO" "${GITHUB_WORKSPACE}/Dependencies/VoodooSMBus"'
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
